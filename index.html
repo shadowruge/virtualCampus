@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Campus - Ambiente Colaborativo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e27;
+            --bg-secondary: #141b3d;
+            --bg-panel: rgba(20, 27, 61, 0.95);
+            --accent-primary: #00d4ff;
+            --accent-secondary: #ff006e;
+            --accent-tertiary: #8338ec;
+            --text-primary: #e8f0ff;
+            --text-secondary: #9ca9c9;
+            --grid-color: rgba(0, 212, 255, 0.1);
+            --shadow-glow: 0 0 30px rgba(0, 212, 255, 0.3);
+        }
+
+        body {
+            font-family: 'Lexend', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-panel);
+            border-bottom: 2px solid var(--accent-primary);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-tertiary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .room-selector {
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-primary);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: 'Lexend', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .room-selector:hover {
+            box-shadow: var(--shadow-glow);
+            transform: translateY(-2px);
+        }
+
+        .online-count {
+            background: var(--accent-secondary);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 0;
+            position: relative;
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+        }
+
+        #worldCanvas {
+            display: block;
+            image-rendering: pixelated;
+            cursor: crosshair;
+        }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: var(--bg-panel);
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid var(--accent-primary);
+            backdrop-filter: blur(10px);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .control-hint {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-panel);
+            border-left: 2px solid var(--accent-primary);
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(10px);
+        }
+
+        .sidebar-tabs {
+            display: flex;
+            border-bottom: 1px solid var(--accent-primary);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 1rem;
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-family: 'Lexend', sans-serif;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab.active {
+            color: var(--accent-primary);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--accent-primary);
+            box-shadow: 0 0 10px var(--accent-primary);
+        }
+
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Chat */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .message {
+            background: var(--bg-secondary);
+            padding: 0.75rem;
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-primary);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .message-author {
+            font-weight: 600;
+            color: var(--accent-primary);
+            margin-bottom: 0.25rem;
+            font-size: 0.85rem;
+        }
+
+        .message-text {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .quick-speech-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-tertiary);
+            color: var(--accent-tertiary);
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 1.2rem;
+        }
+
+        .quick-speech-btn:hover {
+            background: var(--accent-tertiary);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .chat-input {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-primary);
+            color: var(--text-primary);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-family: 'Lexend', sans-serif;
+            font-size: 0.9rem;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-tertiary));
+            border: none;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
+        }
+
+        /* Users List */
+        .users-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .user-item {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-tertiary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .user-details {
+            flex: 1;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-location {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-tertiary);
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .setting-group {
+            background: var(--bg-secondary);
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 3px solid var(--accent-tertiary);
+        }
+
+        .setting-label {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--accent-primary);
+        }
+
+        .setting-input {
+            width: 100%;
+            background: var(--bg-primary);
+            border: 1px solid var(--accent-primary);
+            color: var(--text-primary);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-family: 'Lexend', sans-serif;
+        }
+
+        .color-picker {
+            width: 100%;
+            height: 40px;
+            cursor: pointer;
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, var(--accent-secondary), var(--accent-tertiary));
+            border: none;
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 0, 110, 0.4);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(10, 14, 39, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .avatar-selector {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .avatar-option {
+            aspect-ratio: 1;
+            border: 2px solid var(--accent-primary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: var(--bg-secondary);
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avatar-option:hover {
+            transform: scale(1.1);
+            box-shadow: var(--shadow-glow);
+        }
+
+        .avatar-option.selected {
+            border-color: var(--accent-secondary);
+            box-shadow: 0 0 20px rgba(255, 0, 110, 0.5);
+        }
+
+        .avatar-preview {
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+
+        .modal-content {
+            background: var(--bg-panel);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 2px solid var(--accent-primary);
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.5);
+            max-width: 400px;
+            width: 90%;
+            animation: modalSlide 0.4s ease;
+        }
+
+        @keyframes modalSlide {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-tertiary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .form-input {
+            width: 100%;
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent-primary);
+            color: var(--text-primary);
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-family: 'Lexend', sans-serif;
+            font-size: 1rem;
+        }
+
+        .form-input:focus {
+            outline: none;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-tertiary));
+            border: none;
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(0, 212, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">◊ Virtual Campus</div>
+            <div class="user-info">
+                <select class="room-selector" id="roomSelector">
+                    <option value="lobby">🏛️ Lobby Principal</option>
+                    <option value="meeting">🎯 Sala de Reunião</option>
+                    <option value="lounge">☕ Lounge</option>
+                    <option value="workspace">💻 Workspace</option>
+                </select>
+                <div class="online-count" id="onlineCount">● 0 online</div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Canvas Area -->
+            <div class="canvas-area">
+                <canvas id="worldCanvas"></canvas>
+                <div class="canvas-overlay">
+                    <div class="controls">
+                        <div class="control-hint">↑ ↓ ← → Mover</div>
+                        <div class="control-hint">WASD Alternativo</div>
+                        <div class="control-hint">Click para ir</div>
+                        <div class="control-hint">T para falar rápido</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-tabs">
+                    <button class="tab active" data-tab="chat">💬 Chat</button>
+                    <button class="tab" data-tab="users">👥 Usuários</button>
+                    <button class="tab" data-tab="settings">⚙️ Config</button>
+                </div>
+
+                <!-- Chat Tab -->
+                <div class="tab-content active" id="chatTab">
+                    <div class="chat-messages" id="chatMessages"></div>
+                    <div class="chat-input-area">
+                        <button class="quick-speech-btn" id="quickSpeechBtn" title="Fala rápida (T)">💬</button>
+                        <input type="text" class="chat-input" id="chatInput" placeholder="Enviar mensagem...">
+                        <button class="send-btn" id="sendBtn">Enviar</button>
+                    </div>
+                </div>
+
+                <!-- Users Tab -->
+                <div class="tab-content" id="usersTab">
+                    <div class="users-list" id="usersList"></div>
+                </div>
+
+                <!-- Settings Tab -->
+                <div class="tab-content" id="settingsTab">
+                    <div class="settings-panel">
+                        <div class="setting-group">
+                            <div class="setting-label">Nome de Usuário</div>
+                            <input type="text" class="setting-input" id="usernameInput" placeholder="Seu nome">
+                        </div>
+                        <div class="setting-group">
+                            <div class="setting-label">Avatar</div>
+                            <div class="avatar-selector" id="settingsAvatarSelector"></div>
+                        </div>
+                        <div class="setting-group">
+                            <div class="setting-label">Cor Personalizada (opcional)</div>
+                            <input type="color" class="color-picker setting-input" id="colorPicker" value="#00d4ff">
+                        </div>
+                        <button class="save-btn" id="saveSettings">Salvar Configurações</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Welcome Modal -->
+    <div class="modal active" id="welcomeModal">
+        <div class="modal-content">
+            <h2 class="modal-title">Bem-vindo ao Virtual Campus</h2>
+            <div class="form-group">
+                <label class="form-label">Como devemos chamar você?</label>
+                <input type="text" class="form-input" id="initialUsername" placeholder="Seu nome">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Escolha seu avatar</label>
+                <div class="avatar-selector" id="avatarSelector"></div>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Personalize a cor (opcional)</label>
+                <input type="color" class="form-input color-picker" id="initialColor" value="#00d4ff">
+            </div>
+            <button class="btn-primary" id="joinBtn">Entrar no Campus</button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // SISTEMA DE AVATARES
+        // ============================================
+        
+        const AVATARS = {
+            man1: {
+                name: 'Homem 1',
+                skinTone: '#f4c2a5',
+                hairColor: '#4a3728',
+                shirtColor: '#3b5998',
+                gender: 'male'
+            },
+            man2: {
+                name: 'Homem 2',
+                skinTone: '#8d5524',
+                hairColor: '#1a1a1a',
+                shirtColor: '#e74c3c',
+                gender: 'male'
+            },
+            man3: {
+                name: 'Homem 3',
+                skinTone: '#ffd7ba',
+                hairColor: '#d4a574',
+                shirtColor: '#27ae60',
+                gender: 'male'
+            },
+            man4: {
+                name: 'Homem 4',
+                skinTone: '#5c4033',
+                hairColor: '#2c1810',
+                shirtColor: '#9b59b6',
+                gender: 'male'
+            },
+            man5: {
+                name: 'Homem 5',
+                skinTone: '#e8beac',
+                hairColor: '#8b4513',
+                shirtColor: '#1abc9c',
+                gender: 'male'
+            },
+            woman1: {
+                name: 'Mulher 1',
+                skinTone: '#f5cdb6',
+                hairColor: '#3d2314',
+                shirtColor: '#e91e63',
+                gender: 'female'
+            },
+            woman2: {
+                name: 'Mulher 2',
+                skinTone: '#9d6b53',
+                hairColor: '#1a1a1a',
+                shirtColor: '#ff9800',
+                gender: 'female'
+            },
+            woman3: {
+                name: 'Mulher 3',
+                skinTone: '#ffe4d1',
+                hairColor: '#ffd700',
+                shirtColor: '#00bcd4',
+                gender: 'female'
+            },
+            woman4: {
+                name: 'Mulher 4',
+                skinTone: '#6b4423',
+                hairColor: '#4a2511',
+                shirtColor: '#673ab7',
+                gender: 'female'
+            },
+            woman5: {
+                name: 'Mulher 5',
+                skinTone: '#f0d5c0',
+                hairColor: '#c85a3e',
+                shirtColor: '#4caf50',
+                gender: 'female'
+            }
+        };
+
+        // ============================================
+        // FUNÇÕES DE DESENHO DE AVATAR
+        // ============================================
+        
+        function drawAvatarSprite(ctx, x, y, avatarData, scale = 1, customColor = null) {
+            const size = 32 * scale;
+            const centerX = x;
+            const centerY = y;
+
+            ctx.save();
+            
+            // Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(centerX, centerY + size * 0.9, size * 0.4, size * 0.1, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Corpo (camisa)
+            const shirtColor = customColor || avatarData.shirtColor;
+            ctx.fillStyle = shirtColor;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY + size * 0.25, size * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pescoço
+            ctx.fillStyle = avatarData.skinTone;
+            ctx.fillRect(centerX - size * 0.1, centerY + size * 0.05, size * 0.2, size * 0.15);
+
+            // Cabeça
+            ctx.fillStyle = avatarData.skinTone;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY - size * 0.1, size * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Cabelo
+            ctx.fillStyle = avatarData.hairColor;
+            if (avatarData.gender === 'male') {
+                // Cabelo masculino curto
+                ctx.beginPath();
+                ctx.arc(centerX, centerY - size * 0.15, size * 0.28, Math.PI, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Cabelo feminino longo
+                ctx.beginPath();
+                ctx.arc(centerX, centerY - size * 0.15, size * 0.32, Math.PI * 0.8, Math.PI * 2.2);
+                ctx.fill();
+                // Cabelo nas laterais
+                ctx.fillRect(centerX - size * 0.32, centerY - size * 0.15, size * 0.1, size * 0.35);
+                ctx.fillRect(centerX + size * 0.22, centerY - size * 0.15, size * 0.1, size * 0.35);
+            }
+
+            // Olhos
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(centerX - size * 0.1, centerY - size * 0.08, size * 0.08, 0, Math.PI * 2);
+            ctx.arc(centerX + size * 0.1, centerY - size * 0.08, size * 0.08, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pupilas
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(centerX - size * 0.1, centerY - size * 0.08, size * 0.04, 0, Math.PI * 2);
+            ctx.arc(centerX + size * 0.1, centerY - size * 0.08, size * 0.04, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Brilho nos olhos
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(centerX - size * 0.08, centerY - size * 0.1, size * 0.02, 0, Math.PI * 2);
+            ctx.arc(centerX + size * 0.12, centerY - size * 0.1, size * 0.02, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Boca (sorriso)
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = size * 0.04;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY + size * 0.02, size * 0.15, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+
+            // Braços
+            ctx.fillStyle = shirtColor;
+            ctx.fillRect(centerX - size * 0.55, centerY + size * 0.2, size * 0.2, size * 0.4);
+            ctx.fillRect(centerX + size * 0.35, centerY + size * 0.2, size * 0.2, size * 0.4);
+
+            // Mãos
+            ctx.fillStyle = avatarData.skinTone;
+            ctx.beginPath();
+            ctx.arc(centerX - size * 0.45, centerY + size * 0.6, size * 0.1, 0, Math.PI * 2);
+            ctx.arc(centerX + size * 0.45, centerY + size * 0.6, size * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Pernas
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(centerX - size * 0.25, centerY + size * 0.55, size * 0.18, size * 0.35);
+            ctx.fillRect(centerX + size * 0.07, centerY + size * 0.55, size * 0.18, size * 0.35);
+
+            // Sapatos
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(centerX - size * 0.16, centerY + size * 0.9, size * 0.12, 0, Math.PI * 2);
+            ctx.arc(centerX + size * 0.16, centerY + size * 0.9, size * 0.12, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function createAvatarPreview(avatarKey, avatarData) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            canvas.className = 'avatar-preview';
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#1a1f3a';
+            ctx.fillRect(0, 0, 64, 64);
+            
+            drawAvatarSprite(ctx, 32, 32, avatarData, 1);
+            
+            return canvas;
+        }
+
+        // ============================================
+        // SISTEMA DE PERSISTÊNCIA JSON
+        // ============================================
+        
+        class DataPersistence {
+            constructor() {
+                this.storageKey = 'virtualCampusData';
+                this.data = this.load();
+            }
+
+            load() {
+                try {
+                    const stored = localStorage.getItem(this.storageKey);
+                    return stored ? JSON.parse(stored) : this.getDefaultData();
+                } catch (e) {
+                    console.error('Erro ao carregar dados:', e);
+                    return this.getDefaultData();
+                }
+            }
+
+            getDefaultData() {
+                return {
+                    users: {},
+                    messages: [],
+                    rooms: {
+                        lobby: { name: 'Lobby Principal', users: [] },
+                        meeting: { name: 'Sala de Reunião', users: [] },
+                        lounge: { name: 'Lounge', users: [] },
+                        workspace: { name: 'Workspace', users: [] }
+                    },
+                    settings: {
+                        lastRoom: 'lobby'
+                    }
+                };
+            }
+
+            save() {
+                try {
+                    localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+                } catch (e) {
+                    console.error('Erro ao salvar dados:', e);
+                }
+            }
+
+            addUser(userId, userData) {
+                this.data.users[userId] = {
+                    ...userData,
+                    lastSeen: Date.now(),
+                    createdAt: Date.now()
+                };
+                this.save();
+            }
+
+            updateUser(userId, updates) {
+                if (this.data.users[userId]) {
+                    this.data.users[userId] = {
+                        ...this.data.users[userId],
+                        ...updates,
+                        lastSeen: Date.now()
+                    };
+                    this.save();
+                }
+            }
+
+            addMessage(message) {
+                this.data.messages.push({
+                    ...message,
+                    timestamp: Date.now(),
+                    id: Date.now() + Math.random()
+                });
+                
+                // Manter apenas as últimas 100 mensagens
+                if (this.data.messages.length > 100) {
+                    this.data.messages = this.data.messages.slice(-100);
+                }
+                this.save();
+            }
+
+            getMessages(room, limit = 50) {
+                return this.data.messages
+                    .filter(m => m.room === room)
+                    .slice(-limit);
+            }
+
+            updateRoom(roomId, userId, action) {
+                if (!this.data.rooms[roomId]) return;
+                
+                if (action === 'join') {
+                    if (!this.data.rooms[roomId].users.includes(userId)) {
+                        this.data.rooms[roomId].users.push(userId);
+                    }
+                } else if (action === 'leave') {
+                    this.data.rooms[roomId].users = this.data.rooms[roomId].users.filter(id => id !== userId);
+                }
+                this.save();
+            }
+
+            getRoomUsers(roomId) {
+                return this.data.rooms[roomId]?.users || [];
+            }
+
+            exportData() {
+                return JSON.stringify(this.data, null, 2);
+            }
+
+            importData(jsonString) {
+                try {
+                    this.data = JSON.parse(jsonString);
+                    this.save();
+                    return true;
+                } catch (e) {
+                    console.error('Erro ao importar dados:', e);
+                    return false;
+                }
+            }
+        }
+
+        // ============================================
+        // SISTEMA DE MUNDO VIRTUAL
+        // ============================================
+        
+        class VirtualWorld {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.width = 800;
+                this.height = 600;
+                this.gridSize = 32;
+                this.currentUser = null;
+                this.otherUsers = new Map();
+                this.currentRoom = 'lobby';
+                this.speechBubbles = new Map(); // userId -> {text, timestamp}
+                
+                this.setupCanvas();
+                this.setupRoomLayouts();
+            }
+
+            setupCanvas() {
+                this.canvas.width = this.width;
+                this.canvas.height = this.height;
+                this.canvas.style.width = '100%';
+                this.canvas.style.height = '100%';
+            }
+
+            setupRoomLayouts() {
+                this.rooms = {
+                    lobby: {
+                        walls: [
+                            { x: 0, y: 0, w: 800, h: 32 },
+                            { x: 0, y: 0, w: 32, h: 600 },
+                            { x: 0, y: 568, w: 800, h: 32 },
+                            { x: 768, y: 0, w: 32, h: 600 }
+                        ],
+                        objects: [
+                            { type: 'table', x: 100, y: 80, w: 80, h: 80 },
+                            { type: 'table', x: 620, y: 80, w: 80, h: 80 },
+                            { type: 'plant', x: 350, y: 60, w: 40, h: 40 },
+                            { type: 'plant', x: 50, y: 480, w: 40, h: 40 },
+                            { type: 'plant', x: 710, y: 480, w: 40, h: 40 }
+                        ]
+                    },
+                    meeting: {
+                        walls: [
+                            { x: 0, y: 0, w: 800, h: 32 },
+                            { x: 0, y: 0, w: 32, h: 600 },
+                            { x: 0, y: 568, w: 800, h: 32 },
+                            { x: 768, y: 0, w: 32, h: 600 }
+                        ],
+                        objects: [
+                            { type: 'table', x: 250, y: 200, w: 300, h: 120 },
+                            { type: 'chair', x: 200, y: 180, w: 32, h: 32 },
+                            { type: 'chair', x: 568, y: 180, w: 32, h: 32 },
+                            { type: 'chair', x: 200, y: 340, w: 32, h: 32 },
+                            { type: 'chair', x: 568, y: 340, w: 32, h: 32 },
+                            { type: 'plant', x: 50, y: 60, w: 40, h: 40 },
+                            { type: 'plant', x: 710, y: 60, w: 40, h: 40 }
+                        ]
+                    },
+                    lounge: {
+                        walls: [
+                            { x: 0, y: 0, w: 800, h: 32 },
+                            { x: 0, y: 0, w: 32, h: 600 },
+                            { x: 0, y: 568, w: 800, h: 32 },
+                            { x: 768, y: 0, w: 32, h: 600 }
+                        ],
+                        objects: [
+                            { type: 'couch', x: 80, y: 100, w: 120, h: 60 },
+                            { type: 'couch', x: 600, y: 100, w: 120, h: 60 },
+                            { type: 'table', x: 340, y: 250, w: 120, h: 80 },
+                            { type: 'plant', x: 340, y: 60, w: 40, h: 40 },
+                            { type: 'plant', x: 50, y: 450, w: 40, h: 40 },
+                            { type: 'plant', x: 710, y: 450, w: 40, h: 40 }
+                        ]
+                    },
+                    workspace: {
+                        walls: [
+                            { x: 0, y: 0, w: 800, h: 32 },
+                            { x: 0, y: 0, w: 32, h: 600 },
+                            { x: 0, y: 568, w: 800, h: 32 },
+                            { x: 768, y: 0, w: 32, h: 600 }
+                        ],
+                        objects: [
+                            { type: 'desk', x: 80, y: 80, w: 100, h: 60 },
+                            { type: 'desk', x: 620, y: 80, w: 100, h: 60 },
+                            { type: 'desk', x: 80, y: 200, w: 100, h: 60 },
+                            { type: 'desk', x: 620, y: 200, w: 100, h: 60 },
+                            { type: 'desk', x: 80, y: 430, w: 100, h: 60 },
+                            { type: 'desk', x: 620, y: 430, w: 100, h: 60 },
+                            { type: 'plant', x: 350, y: 250, w: 40, h: 40 }
+                        ]
+                    }
+                };
+            }
+
+            setCurrentUser(user) {
+                this.currentUser = user;
+            }
+
+            addOtherUser(userId, userData) {
+                this.otherUsers.set(userId, userData);
+            }
+
+            removeOtherUser(userId) {
+                this.otherUsers.delete(userId);
+            }
+
+            changeRoom(roomId) {
+                this.currentRoom = roomId;
+                // Find valid spawn position for new room
+                if (this.currentUser) {
+                    const spawnPos = this.getValidSpawnPosition(roomId);
+                    this.currentUser.x = spawnPos.x;
+                    this.currentUser.y = spawnPos.y;
+                    this.currentUser.room = roomId;
+                }
+            }
+
+            getValidSpawnPosition(roomId) {
+                // Define spawn positions for each room
+                const spawnPositions = {
+                    lobby: { x: 100, y: 450 },
+                    meeting: { x: 100, y: 450 },
+                    lounge: { x: 400, y: 450 },
+                    workspace: { x: 350, y: 450 }
+                };
+
+                const pos = spawnPositions[roomId] || { x: 100, y: 450 };
+                
+                // Check if position is valid, if not, find a valid one
+                if (!this.checkCollision(pos.x, pos.y)) {
+                    return pos;
+                }
+
+                // Try to find a valid position nearby
+                for (let dx = -50; dx <= 50; dx += 25) {
+                    for (let dy = -50; dy <= 50; dy += 25) {
+                        const testX = pos.x + dx;
+                        const testY = pos.y + dy;
+                        if (testX > 32 && testX < 736 && testY > 32 && testY < 536) {
+                            if (!this.checkCollision(testX, testY)) {
+                                return { x: testX, y: testY };
+                            }
+                        }
+                    }
+                }
+
+                // Fallback to safe position
+                return { x: 100, y: 450 };
+            }
+
+            addSpeechBubble(userId, text) {
+                this.speechBubbles.set(userId, {
+                    text: text,
+                    timestamp: Date.now()
+                });
+
+                // Auto-remove after 5 seconds
+                setTimeout(() => {
+                    const bubble = this.speechBubbles.get(userId);
+                    if (bubble && bubble.timestamp === this.speechBubbles.get(userId)?.timestamp) {
+                        this.speechBubbles.delete(userId);
+                    }
+                }, 5000);
+            }
+
+            removeSpeechBubble(userId) {
+                this.speechBubbles.delete(userId);
+            }
+
+            checkCollision(x, y, size = 28) {
+                const room = this.rooms[this.currentRoom];
+                if (!room) return false;
+
+                // Check walls
+                for (let wall of room.walls) {
+                    if (x < wall.x + wall.w &&
+                        x + size > wall.x &&
+                        y < wall.y + wall.h &&
+                        y + size > wall.y) {
+                        return true;
+                    }
+                }
+
+                // Check objects
+                for (let obj of room.objects) {
+                    if (x < obj.x + obj.w &&
+                        x + size > obj.x &&
+                        y < obj.y + obj.h &&
+                        y + size > obj.y) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            render() {
+                // Clear canvas
+                this.ctx.fillStyle = '#1a1f3a';
+                this.ctx.fillRect(0, 0, this.width, this.height);
+
+                // Draw grid
+                this.ctx.strokeStyle = 'rgba(0, 212, 255, 0.05)';
+                this.ctx.lineWidth = 1;
+                for (let x = 0; x < this.width; x += this.gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x, 0);
+                    this.ctx.lineTo(x, this.height);
+                    this.ctx.stroke();
+                }
+                for (let y = 0; y < this.height; y += this.gridSize) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(0, y);
+                    this.ctx.lineTo(this.width, y);
+                    this.ctx.stroke();
+                }
+
+                const room = this.rooms[this.currentRoom];
+                if (!room) return;
+
+                // Draw walls
+                this.ctx.fillStyle = '#0a0e27';
+                this.ctx.strokeStyle = '#00d4ff';
+                this.ctx.lineWidth = 2;
+                for (let wall of room.walls) {
+                    this.ctx.fillRect(wall.x, wall.y, wall.w, wall.h);
+                    this.ctx.strokeRect(wall.x, wall.y, wall.w, wall.h);
+                }
+
+                // Draw objects
+                for (let obj of room.objects) {
+                    this.drawObject(obj);
+                }
+
+                // Draw other users
+                this.otherUsers.forEach((user, userId) => {
+                    if (user.room === this.currentRoom) {
+                        this.drawAvatar(user.x, user.y, user.avatarKey, user.name, false, user.color);
+                        
+                        // Draw speech bubble if exists
+                        const bubble = this.speechBubbles.get(userId);
+                        if (bubble) {
+                            this.drawSpeechBubble(user.x, user.y, bubble.text, user.color);
+                        }
+                    }
+                });
+
+                // Draw current user
+                if (this.currentUser) {
+                    this.drawAvatar(
+                        this.currentUser.x,
+                        this.currentUser.y,
+                        this.currentUser.avatarKey,
+                        this.currentUser.name,
+                        true,
+                        this.currentUser.color
+                    );
+                    
+                    // Draw speech bubble if exists
+                    const bubble = this.speechBubbles.get('current');
+                    if (bubble) {
+                        this.drawSpeechBubble(this.currentUser.x, this.currentUser.y, bubble.text, this.currentUser.color);
+                    }
+                }
+            }
+
+            drawObject(obj) {
+                const colors = {
+                    table: '#3d2f1f',
+                    desk: '#2f3d3d',
+                    chair: '#4a3c2f',
+                    couch: '#5a3f3f',
+                    plant: '#2d5a2d'
+                };
+
+                this.ctx.fillStyle = colors[obj.type] || '#333';
+                this.ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+                
+                this.ctx.strokeStyle = '#00d4ff';
+                this.ctx.lineWidth = 1;
+                this.ctx.strokeRect(obj.x, obj.y, obj.w, obj.h);
+
+                // Draw object label
+                this.ctx.fillStyle = 'rgba(0, 212, 255, 0.3)';
+                this.ctx.font = '10px JetBrains Mono';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(obj.type, obj.x + obj.w / 2, obj.y + obj.h / 2 + 3);
+            }
+
+            drawAvatar(x, y, avatarKey, name, isCurrent = false, customColor = null) {
+                const avatarData = AVATARS[avatarKey] || AVATARS.man1;
+                
+                // Draw the sprite
+                drawAvatarSprite(this.ctx, x + 16, y + 16, avatarData, 1, customColor);
+
+                // Indicator for current user (small arrow above)
+                if (isCurrent) {
+                    this.ctx.fillStyle = customColor || avatarData.shirtColor;
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(x + 16, y - 18);
+                    this.ctx.lineTo(x + 11, y - 12);
+                    this.ctx.lineTo(x + 21, y - 12);
+                    this.ctx.closePath();
+                    this.ctx.fill();
+                }
+
+                // Name label
+                this.ctx.fillStyle = 'rgba(10, 14, 39, 0.9)';
+                this.ctx.font = 'bold 10px Lexend';
+                const textWidth = this.ctx.measureText(name).width;
+                this.ctx.fillRect(x + 16 - textWidth / 2 - 4, y - 12, textWidth + 8, 16);
+                
+                this.ctx.fillStyle = customColor || avatarData.shirtColor;
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(name, x + 16, y - 2);
+            }
+
+            drawSpeechBubble(x, y, text, color) {
+                const maxWidth = 150;
+                const padding = 8;
+                const lineHeight = 14;
+                const bubbleX = x + 16;
+                const bubbleY = y - 50;
+
+                // Wrap text
+                this.ctx.font = '11px Lexend';
+                const words = text.split(' ');
+                const lines = [];
+                let currentLine = '';
+
+                words.forEach(word => {
+                    const testLine = currentLine + word + ' ';
+                    const metrics = this.ctx.measureText(testLine);
+                    if (metrics.width > maxWidth && currentLine !== '') {
+                        lines.push(currentLine.trim());
+                        currentLine = word + ' ';
+                    } else {
+                        currentLine = testLine;
+                    }
+                });
+                if (currentLine) lines.push(currentLine.trim());
+
+                const bubbleWidth = Math.min(maxWidth, Math.max(...lines.map(l => this.ctx.measureText(l).width))) + padding * 2;
+                const bubbleHeight = lines.length * lineHeight + padding * 2;
+
+                // Bubble background
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                this.ctx.strokeStyle = color || '#00d4ff';
+                this.ctx.lineWidth = 2;
+                
+                const radius = 8;
+                this.ctx.beginPath();
+                this.ctx.moveTo(bubbleX - bubbleWidth / 2 + radius, bubbleY - bubbleHeight);
+                this.ctx.lineTo(bubbleX + bubbleWidth / 2 - radius, bubbleY - bubbleHeight);
+                this.ctx.quadraticCurveTo(bubbleX + bubbleWidth / 2, bubbleY - bubbleHeight, bubbleX + bubbleWidth / 2, bubbleY - bubbleHeight + radius);
+                this.ctx.lineTo(bubbleX + bubbleWidth / 2, bubbleY - radius);
+                this.ctx.quadraticCurveTo(bubbleX + bubbleWidth / 2, bubbleY, bubbleX + bubbleWidth / 2 - radius, bubbleY);
+                
+                // Pointer
+                this.ctx.lineTo(bubbleX + 8, bubbleY);
+                this.ctx.lineTo(bubbleX, bubbleY + 10);
+                this.ctx.lineTo(bubbleX - 8, bubbleY);
+                
+                this.ctx.lineTo(bubbleX - bubbleWidth / 2 + radius, bubbleY);
+                this.ctx.quadraticCurveTo(bubbleX - bubbleWidth / 2, bubbleY, bubbleX - bubbleWidth / 2, bubbleY - radius);
+                this.ctx.lineTo(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight + radius);
+                this.ctx.quadraticCurveTo(bubbleX - bubbleWidth / 2, bubbleY - bubbleHeight, bubbleX - bubbleWidth / 2 + radius, bubbleY - bubbleHeight);
+                this.ctx.closePath();
+                
+                this.ctx.fill();
+                this.ctx.stroke();
+
+                // Text
+                this.ctx.fillStyle = '#2c3e50';
+                this.ctx.font = '11px Lexend';
+                this.ctx.textAlign = 'center';
+                lines.forEach((line, i) => {
+                    this.ctx.fillText(line, bubbleX, bubbleY - bubbleHeight + padding + 12 + i * lineHeight);
+                });
+            }
+        }
+
+        // ============================================
+        // APLICAÇÃO PRINCIPAL
+        // ============================================
+        
+        class VirtualCampusApp {
+            constructor() {
+                this.db = new DataPersistence();
+                this.canvas = document.getElementById('worldCanvas');
+                this.world = new VirtualWorld(this.canvas);
+                this.userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                this.currentUser = null;
+                this.currentRoom = 'lobby';
+                this.keys = {};
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.setupTabs();
+                this.setupAvatarSelector();
+                this.startGameLoop();
+            }
+
+            setupAvatarSelector() {
+                const selector = document.getElementById('avatarSelector');
+                const settingsSelector = document.getElementById('settingsAvatarSelector');
+                let selectedAvatar = 'man1';
+
+                const createSelector = (container, isSettings = false) => {
+                    Object.keys(AVATARS).forEach(key => {
+                        const option = document.createElement('div');
+                        option.className = 'avatar-option';
+                        if (key === 'man1') option.classList.add('selected');
+                        
+                        const preview = createAvatarPreview(key, AVATARS[key]);
+                        option.appendChild(preview);
+                        
+                        option.addEventListener('click', () => {
+                            container.querySelectorAll('.avatar-option').forEach(opt => {
+                                opt.classList.remove('selected');
+                            });
+                            option.classList.add('selected');
+                            selectedAvatar = key;
+                            this.selectedAvatar = key;
+                            
+                            // Sync both selectors
+                            if (isSettings) {
+                                const welcomeOption = selector.children[Object.keys(AVATARS).indexOf(key)];
+                                if (welcomeOption) {
+                                    selector.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
+                                    welcomeOption.classList.add('selected');
+                                }
+                            } else {
+                                const settingsOption = settingsSelector.children[Object.keys(AVATARS).indexOf(key)];
+                                if (settingsOption) {
+                                    settingsSelector.querySelectorAll('.avatar-option').forEach(opt => opt.classList.remove('selected'));
+                                    settingsOption.classList.add('selected');
+                                }
+                            }
+                        });
+                        
+                        container.appendChild(option);
+                    });
+                };
+
+                createSelector(selector, false);
+                createSelector(settingsSelector, true);
+                this.selectedAvatar = selectedAvatar;
+            }
+
+            setupEventListeners() {
+                // Welcome modal
+                document.getElementById('joinBtn').addEventListener('click', () => this.joinCampus());
+                
+                // Chat
+                document.getElementById('sendBtn').addEventListener('click', () => this.sendMessage());
+                document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.sendMessage();
+                });
+                
+                // Quick speech button
+                document.getElementById('quickSpeechBtn').addEventListener('click', () => {
+                    const phrases = [
+                        'Olá! 👋',
+                        'Tudo bem?',
+                        'Concordo! 👍',
+                        'Legal!',
+                        'Entendi!',
+                        'Vamos lá!',
+                        'Obrigado!',
+                        'Até logo! 👋'
+                    ];
+                    const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+                    document.getElementById('chatInput').value = randomPhrase;
+                    this.sendMessage();
+                });
+
+                // Room selector
+                document.getElementById('roomSelector').addEventListener('change', (e) => {
+                    this.changeRoom(e.target.value);
+                });
+
+                // Settings
+                document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
+
+                // Keyboard controls
+                window.addEventListener('keydown', (e) => {
+                    // Quick speech with T key
+                    if (e.key.toLowerCase() === 't' && !e.ctrlKey && !e.metaKey) {
+                        const chatInput = document.getElementById('chatInput');
+                        // Only activate if not already focused on input
+                        if (document.activeElement !== chatInput) {
+                            e.preventDefault();
+                            chatInput.focus();
+                            return;
+                        }
+                    }
+                    
+                    this.keys[e.key.toLowerCase()] = true;
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+
+                // Mouse click to move
+                this.canvas.addEventListener('click', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const scaleX = this.world.width / rect.width;
+                    const scaleY = this.world.height / rect.height;
+                    const targetX = (e.clientX - rect.left) * scaleX;
+                    const targetY = (e.clientY - rect.top) * scaleY;
+                    this.moveToTarget(targetX, targetY);
+                });
+            }
+
+            setupTabs() {
+                const tabs = document.querySelectorAll('.tab');
+                const tabContents = document.querySelectorAll('.tab-content');
+
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        tabs.forEach(t => t.classList.remove('active'));
+                        tabContents.forEach(tc => tc.classList.remove('active'));
+                        
+                        tab.classList.add('active');
+                        document.getElementById(tab.dataset.tab + 'Tab').classList.add('active');
+                    });
+                });
+            }
+
+            joinCampus() {
+                const username = document.getElementById('initialUsername').value.trim() || 'Visitante';
+                const color = document.getElementById('initialColor').value;
+                const avatarKey = this.selectedAvatar || 'man1';
+
+                this.currentUser = {
+                    id: this.userId,
+                    name: username,
+                    color: color,
+                    avatarKey: avatarKey,
+                    x: 400,
+                    y: 300,
+                    room: this.currentRoom
+                };
+
+                this.db.addUser(this.userId, this.currentUser);
+                this.db.updateRoom(this.currentRoom, this.userId, 'join');
+                this.world.setCurrentUser(this.currentUser);
+
+                document.getElementById('welcomeModal').classList.remove('active');
+                document.getElementById('usernameInput').value = username;
+                document.getElementById('colorPicker').value = color;
+
+                this.loadMessages();
+                this.updateUsersList();
+                this.addSystemMessage(`${username} entrou no campus!`);
+            }
+
+            sendMessage() {
+                const input = document.getElementById('chatInput');
+                const text = input.value.trim();
+                
+                if (!text || !this.currentUser) return;
+
+                const message = {
+                    author: this.currentUser.name,
+                    text: text,
+                    room: this.currentRoom,
+                    userId: this.userId,
+                    color: this.currentUser.color
+                };
+
+                this.db.addMessage(message);
+                this.displayMessage(message);
+                
+                // Add speech bubble to avatar
+                this.world.addSpeechBubble('current', text);
+                
+                input.value = '';
+            }
+
+            displayMessage(message) {
+                const messagesDiv = document.getElementById('chatMessages');
+                const messageEl = document.createElement('div');
+                messageEl.className = 'message';
+                
+                const time = new Date(message.timestamp || Date.now()).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+
+                messageEl.innerHTML = `
+                    <div class="message-author" style="color: ${message.color || '#00d4ff'}">${message.author}</div>
+                    <div class="message-text">${this.escapeHtml(message.text)}</div>
+                    <div class="message-time">${time}</div>
+                `;
+
+                messagesDiv.appendChild(messageEl);
+                messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            }
+
+            addSystemMessage(text) {
+                this.displayMessage({
+                    author: 'Sistema',
+                    text: text,
+                    color: '#8338ec',
+                    timestamp: Date.now()
+                });
+            }
+
+            loadMessages() {
+                const messages = this.db.getMessages(this.currentRoom);
+                const messagesDiv = document.getElementById('chatMessages');
+                messagesDiv.innerHTML = '';
+                messages.forEach(msg => this.displayMessage(msg));
+            }
+
+            changeRoom(roomId) {
+                if (roomId === this.currentRoom) return;
+
+                this.db.updateRoom(this.currentRoom, this.userId, 'leave');
+                this.db.updateRoom(roomId, this.userId, 'join');
+                
+                this.currentRoom = roomId;
+                this.currentUser.room = roomId;
+                
+                // Change room in world (this will update position)
+                this.world.changeRoom(roomId);
+                
+                // Sync position from world back to currentUser
+                this.currentUser.x = this.world.currentUser.x;
+                this.currentUser.y = this.world.currentUser.y;
+                
+                this.db.updateUser(this.userId, { 
+                    room: roomId, 
+                    x: this.currentUser.x, 
+                    y: this.currentUser.y 
+                });
+                
+                this.loadMessages();
+                this.updateUsersList();
+                
+                const roomNames = {
+                    lobby: 'Lobby Principal',
+                    meeting: 'Sala de Reunião',
+                    lounge: 'Lounge',
+                    workspace: 'Workspace'
+                };
+                
+                this.addSystemMessage(`Você entrou em: ${roomNames[roomId]}`);
+            }
+
+            updateUsersList() {
+                const usersList = document.getElementById('usersList');
+                usersList.innerHTML = '';
+                
+                const roomUsers = this.db.getRoomUsers(this.currentRoom);
+                let onlineCount = 0;
+
+                roomUsers.forEach(userId => {
+                    const user = this.db.data.users[userId];
+                    if (!user) return;
+                    
+                    onlineCount++;
+                    
+                    const userEl = document.createElement('div');
+                    userEl.className = 'user-item';
+                    userEl.innerHTML = `
+                        <div class="user-avatar" style="background: ${user.color}">${user.name.charAt(0).toUpperCase()}</div>
+                        <div class="user-details">
+                            <div class="user-name">${user.name}</div>
+                            <div class="user-location">${this.currentRoom}</div>
+                        </div>
+                        <div class="status-indicator"></div>
+                    `;
+                    usersList.appendChild(userEl);
+                    
+                    // Update world with other users
+                    if (userId !== this.userId) {
+                        this.world.addOtherUser(userId, user);
+                    }
+                });
+
+                document.getElementById('onlineCount').textContent = `● ${onlineCount} online`;
+            }
+
+            saveSettings() {
+                const username = document.getElementById('usernameInput').value.trim();
+                const color = document.getElementById('colorPicker').value;
+                const avatarKey = this.selectedAvatar;
+
+                if (username && this.currentUser) {
+                    this.currentUser.name = username;
+                    this.currentUser.color = color;
+                    this.currentUser.avatarKey = avatarKey;
+                    this.db.updateUser(this.userId, { name: username, color: color, avatarKey: avatarKey });
+                    this.addSystemMessage('Configurações salvas!');
+                    this.updateUsersList();
+                }
+            }
+
+            moveToTarget(targetX, targetY) {
+                if (!this.currentUser) return;
+
+                const dx = targetX - this.currentUser.x;
+                const dy = targetY - this.currentUser.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < 5) return;
+
+                const speed = 3;
+                const steps = Math.ceil(distance / speed);
+                let step = 0;
+
+                const moveInterval = setInterval(() => {
+                    if (step >= steps || !this.currentUser) {
+                        clearInterval(moveInterval);
+                        return;
+                    }
+
+                    const newX = this.currentUser.x + (dx / steps);
+                    const newY = this.currentUser.y + (dy / steps);
+
+                    if (!this.world.checkCollision(newX, newY)) {
+                        this.currentUser.x = newX;
+                        this.currentUser.y = newY;
+                        this.db.updateUser(this.userId, { x: newX, y: newY });
+                    } else {
+                        clearInterval(moveInterval);
+                    }
+
+                    step++;
+                }, 16);
+            }
+
+            updateMovement() {
+                if (!this.currentUser) return;
+
+                const speed = 4;
+                let dx = 0;
+                let dy = 0;
+
+                if (this.keys['arrowup'] || this.keys['w']) dy -= speed;
+                if (this.keys['arrowdown'] || this.keys['s']) dy += speed;
+                if (this.keys['arrowleft'] || this.keys['a']) dx -= speed;
+                if (this.keys['arrowright'] || this.keys['d']) dx += speed;
+
+                if (dx !== 0 || dy !== 0) {
+                    const newX = this.currentUser.x + dx;
+                    const newY = this.currentUser.y + dy;
+
+                    if (!this.world.checkCollision(newX, this.currentUser.y)) {
+                        this.currentUser.x = newX;
+                    }
+                    if (!this.world.checkCollision(this.currentUser.x, newY)) {
+                        this.currentUser.y = newY;
+                    }
+
+                    this.db.updateUser(this.userId, { x: this.currentUser.x, y: this.currentUser.y });
+                }
+            }
+
+            startGameLoop() {
+                const loop = () => {
+                    this.updateMovement();
+                    this.world.render();
+                    requestAnimationFrame(loop);
+                };
+                loop();
+
+                // Update users list periodically
+                setInterval(() => {
+                    if (this.currentUser) {
+                        this.updateUsersList();
+                    }
+                }, 3000);
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        }
+
+        // ============================================
+        // INICIALIZAR APLICAÇÃO
+        // ============================================
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            const app = new VirtualCampusApp();
+            
+            // Expose for debugging
+            window.campusApp = app;
+            window.exportData = () => {
+                const data = app.db.exportData();
+                console.log('Data exported:', data);
+                return data;
+            };
+            window.importData = (jsonString) => {
+                return app.db.importData(jsonString);
+            };
+        });
+    </script>
+</body>
+</html>
